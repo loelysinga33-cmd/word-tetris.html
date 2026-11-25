@@ -180,20 +180,41 @@ const sheetUrl=(()=>{try{const p=new URLSearchParams(location.search).get('sheet
 const cv=$("board"),cx=cv.getContext("2d"),nv=$("next"),nx=nv.getContext("2d");
 let cell=28,grid,cur,nextT,bag=[],score,lines,level,streak,maxStreak,gauge,right,total,wrongs,dropMs,acc0,last,running=false,paused=false,q=null,sound=true,ac=null,pool,mode,t0,qbag=[],player={},lastResult=null;
 
-/* 선생님 지정: 링크 뒤에 ?cat=h1&mode=jk&spd=1 처럼 붙이면 학생은 바꿀 수 없음 */
-const LOCKED=(()=>{let q;try{q=new URLSearchParams(location.search)}catch(e){return false}
-  let any=false;
-  [["cat","unit"],["mode","mode"],["spd","spd"]].forEach(([p,id])=>{
-    const v=q.get(p),sel=$(id);if(!v||![...sel.options].some(o=>o.value===v))return;
-    sel.value=v;any=true;
-    const lab=document.querySelector(`label[for="${id}"]`);
+/* 학생 화면: 분류·문제 방향·속도는 링크(?cat=..&mode=..&spd=..)로만 정해지고 학생은 바꿀 수 없음
+   선생님 화면: 링크 끝에 ?teacher 를 붙이면 직접 고르고 학생용 링크를 만들 수 있음 */
+const Q=(()=>{try{return new URLSearchParams(location.search)}catch(e){return new URLSearchParams()}})();
+const TEACHER=Q.has("teacher");
+const PARAMS=[["cat","unit"],["mode","mode"],["spd","spd"]];
+let LINK_OK=true;
+if(!TEACHER){
+  PARAMS.forEach(([p,id])=>{
+    const sel=$(id),v=Q.get(p);
+    if(v&&[...sel.options].some(o=>o.value===v))sel.value=v;
+    else if(p==="cat")LINK_OK=false;
     const box=document.createElement("div");box.className="fixed";
     const t=document.createElement("span");t.textContent=sel.selectedOptions[0].textContent;
     const m=document.createElement("small");m.textContent="선생님 지정";
     box.append(t,m);sel.style.display="none";sel.after(box);
   });
-  if(any)$("menu").textContent="처음 화면";
-  return any;})();
+  $("menu").textContent="처음 화면";
+  if(!LINK_OK){
+    document.querySelectorAll('.fixed').forEach(e=>e.remove());
+    ["unit","mode","spd"].forEach(id=>{const l=document.querySelector(`label[for="${id}"]`);if(l)l.style.display="none"});
+    $("startErr").textContent="선생님이 보내 준 링크로 들어와 주세요.";
+    $("go").disabled=true;$("go").style.opacity=.4;
+  }
+}else{
+  const wrap=document.createElement("div");wrap.className="opts";wrap.style.marginTop="6px";
+  wrap.innerHTML='<label>학생용 링크 (선생님만 보임)</label><input id="tLink" readonly><button class="btn ghost" id="tCopy" type="button">학생용 링크 복사</button>';
+  $("go").parentElement.after(wrap);
+  const mk=()=>{const base=location.href.split(/[?#]/)[0];
+    $("tLink").value=`${base}?cat=${$("unit").value}&mode=${$("mode").value}&spd=${$("spd").value}`};
+  ["unit","mode","spd"].forEach(id=>$(id).addEventListener("change",mk));mk();
+  $("tCopy").onclick=()=>{const i=$("tLink");i.select();
+    const ok=()=>{$("tCopy").textContent="복사됨 ✔";setTimeout(()=>$("tCopy").textContent="학생용 링크 복사",1500)};
+    (navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(ok,()=>{try{document.execCommand("copy");ok()}catch(e){}})};
+  document.querySelector('#start .sub').textContent="선생님 화면 · 분류를 고르고 학생용 링크를 복사하세요";
+}
 try{const s=JSON.parse(localStorage.getItem("wt_player")||"null");if(s){$("cls").value=s.cls||"";$("num").value=s.num||"";$("nm").value=s.name||"";}}catch(e){}
 
 function size(){
@@ -335,6 +356,7 @@ function tone(f,d,type="square"){
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(.06,ac.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}
 }
 function start(){
+  if(!TEACHER&&!LINK_OK)return;
   const cls=$("cls").value,num=$("num").value.trim(),name=$("nm").value.trim();
   if(!cls||!num||!name){$("startErr").textContent="반, 번호, 이름을 모두 입력하세요.";$("over").hidden=true;$("start").hidden=false;return}
   $("startErr").textContent="";
