@@ -182,7 +182,7 @@ let cell=28,grid,cur,nextT,bag=[],score,lines,level,streak,maxStreak,gauge,right
 
 /* 학생 화면: 분류·문제 방향·속도는 링크(?cat=..&mode=..&spd=..)로만 정해지고 학생은 바꿀 수 없음
    선생님 화면: 링크 끝에 ?teacher 를 붙이면 직접 고르고 학생용 링크를 만들 수 있음 */
-const Q=(()=>{try{return new URLSearchParams(location.search)}catch(e){return new URLSearchParams()}})();
+const Q=(()=>{const o=new URLSearchParams();try{new URLSearchParams(location.search).forEach((v,k)=>o.set(k.trim().toLowerCase(),v.trim().toLowerCase()))}catch(e){}return o})();
 const TEACHER=Q.has("teacher");
 const PARAMS=[["cat","unit"],["mode","mode"],["spd","spd"]];
 let LINK_OK=true;
@@ -207,7 +207,7 @@ if(!TEACHER){
   const wrap=document.createElement("div");wrap.className="opts";wrap.style.marginTop="6px";
   wrap.innerHTML='<label>학생용 링크 (선생님만 보임)</label><input id="tLink" readonly><button class="btn ghost" id="tCopy" type="button">학생용 링크 복사</button>';
   $("go").parentElement.after(wrap);
-  const mk=()=>{const base=location.href.split(/[?#]/)[0];
+  const mk=()=>{const base=location.href.split(/[?#]/)[0].replace(/\.html\/+$/i,".html");
     $("tLink").value=`${base}?cat=${$("unit").value}&mode=${$("mode").value}&spd=${$("spd").value}`};
   ["unit","mode","spd"].forEach(id=>$(id).addEventListener("change",mk));mk();
   $("tCopy").onclick=()=>{const i=$("tLink");i.select();
